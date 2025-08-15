@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'test.css' %}">
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <h2>Processing Payment...</h2>
+
+    <script>
+        var options = {
+            "key": "{{ key_id }}",
+            "amount": "{{ amount }}",  // in paise
+            "currency": "INR",
+            "name": "HHH Perfumes",
+            "description": "Transaction",
+            "order_id": "{{ payment.id }}",
+            "handler": function (response){
+                alert("Payment successful! ID: " + response.razorpay_payment_id);
+                // Optionally POST to your backend to verify payment
+            },
+            "prefill": {
+                "name": "Customer Name",
+                "email": "customer@example.com",
+                "contact":"phonenumber"
+            },
+            "theme": {
+                "color": "#3399cc"
+            }
+        };
+
+        var rzp1 = new Razorpay(options);
+        rzp1.open();
+    </script>
+</body>
+</html>

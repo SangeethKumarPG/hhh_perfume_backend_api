@@ -1,0 +1,6 @@
+<h2>Your Cart</h2>
+{% for item in cart_items %}
+  <p>{{ item.product.name }} × {{ item.quantity }} = ₹{{ item.subtotal }}</p>
+{% endfor %}
+<p>Total: ₹{{ total }}</p>
+<a href="{% url 'checkout' %}">Checkout</a>

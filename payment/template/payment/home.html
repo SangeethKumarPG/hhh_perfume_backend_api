@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Razorpay Payment</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'home' %}">
+
+</head>
+<body>
+    <h2>Make a Payment</h2>
+
+    <form id="paymentForm" method="POST">
+        {% csrf_token %}
+        <input type="number" name="amount" id="amount" placeholder="Enter amount" required>
+        <button type="submit">Pay Now</button>
+    </form>
+</body>
+</html>
