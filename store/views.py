@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.generics import RetrieveAPIView
 
 from store.models import (                    # store app models, except Invoice
     Category, Product, Contact,
@@ -252,4 +253,22 @@ class ProductCreateAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+    
+# Single product view
+class ProductDetailAPIView(RetrieveAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+# Get all products
+class ProductListAPIView(APIView):
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+    
+# Delete product
+class ProductDeleteAPIView(APIView):
+    def delete(self, request, pk):
+        product = Product.objects.get(pk=pk)
+        product.delete()
+        return Response({'message': 'Product deleted successfully'}, status=status.HTTP_204_NO_CONTENT)

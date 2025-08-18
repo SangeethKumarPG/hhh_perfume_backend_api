@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.conf import settings
 from django.conf.urls.static import static
+
+
 # ---------- Import ViewSets ----------
 from store.views import (
     BasketItemViewSet,
@@ -84,6 +86,7 @@ urlpatterns = [
     path('product/<int:pk>/detail/', product_detail_html_view, name='product-detail-html'),
     path('product/<int:pk>/edit/', product_edit_view, name='product-edit'),
     path('product/<int:pk>/delete/', product_delete_view, name='product-delete'),
+    path('api/', include('store.urls')),
 
     # All ViewSets from router
     path('', include(router.urls)),

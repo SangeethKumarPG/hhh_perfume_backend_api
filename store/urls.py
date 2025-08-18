@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductCreateAPIView
+from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView
 
 
 # ---------- Import ViewSets ----------
@@ -11,7 +11,7 @@ from .views import (
     ProductViewSet,
     BasketItemViewSet,
     OrderViewSet,
-    InvoiceViewSet,
+    #InvoiceViewSet,
     ContactView,
     register_view,
     login_view,
@@ -22,6 +22,8 @@ from .views import (
     product_edit_view,
     product_delete_view,
 )
+from payment.views import InvoiceViewSet
+
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
@@ -29,6 +31,8 @@ router.register(r'products', ProductViewSet, basename='product')
 router.register(r'basket-items', BasketItemViewSet, basename='basketitem')
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
+router.register(r'contact', ContactView, basename='contact')
+
 
 urlpatterns = [
     # API routes from DRF router
@@ -39,7 +43,7 @@ urlpatterns = [
     path('login/', login_view, name='login'),
 
     # Contact form API
-    path('contact/', ContactView.as_view(), name='contact'),
+    # path('contact/', ContactView.as_view(), name='contact'),
 
     # Product dashboard & details (HTML views)
     path('dashboard/', product_dashboard, name='product_dashboard'),
@@ -50,6 +54,15 @@ urlpatterns = [
     path('dashboard/delete/<int:pk>/', product_delete_view, name='product_delete_view'),
 
     # product insert
-    path('api/products/create/', ProductCreateAPIView.as_view(), name='product-create'),
+    path('create-product/', ProductCreateAPIView.as_view(), name='product-create'),
+
+    # single product view
+     path('view-product/<int:pk>/', ProductDetailAPIView.as_view(), name='product-detail'),
+
+    # all products view
+    path('view-products/', ProductListAPIView.as_view(), name='product-list'),
+
+    # delete single product
+    path('delete-product/<int:pk>/', ProductDeleteAPIView.as_view(), name='product-delete'),
 ]
 
