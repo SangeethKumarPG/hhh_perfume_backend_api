@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem
+from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia
 
 
 # Category Serializer
@@ -113,3 +113,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+# ProductMedia Serializer
+class ProductMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductMedia
+        fields = ['id', 'product', 'image1','image2','image3', 'video']

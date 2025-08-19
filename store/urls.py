@@ -2,7 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView
+from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView
 
 
 # ---------- Import ViewSets ----------
@@ -64,5 +64,8 @@ urlpatterns = [
 
     # delete single product
     path('delete-product/<int:pk>/', ProductDeleteAPIView.as_view(), name='product-delete'),
+
+    #insert product media
+    path('add-product-media', ProductMediaCreateView.as_view(), name="product-media-insert")
 ]
 
