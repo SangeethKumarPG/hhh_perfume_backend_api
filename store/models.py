@@ -62,7 +62,9 @@ class Product(models.Model):
 # ---------------------------
 class ProductMedia(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='media')
-    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
+    image1 = models.ImageField(upload_to='product_images/', blank=True, null=True)
+    image2 = models.ImageField(upload_to='product_images/', blank=True, null=True)
+    image3 = models.ImageField(upload_to='product_images/', blank=True, null=True)
     video = models.FileField(upload_to='product_videos/', blank=True, null=True)
 
     def __str__(self):
@@ -185,3 +187,4 @@ class OrderItem(models.Model):
 
     def get_total_price(self):
         return self.quantity * self.price
+    

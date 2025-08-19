@@ -9,19 +9,19 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView
 
 from store.models import (                    # store app models, except Invoice
     Category, Product, Contact,
     Order, OrderItem,
-    Basket, BasketItem
+    Basket, BasketItem, ProductMedia
 )
 from payment.models import Invoice            # import Invoice from payment app
 
 from store.serializers import (
     CategorySerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
-    CartItemSerializer
+    CartItemSerializer, ProductMediaSerializer
 )
 from payment.serializers import InvoiceSerializer   # import InvoiceSerializer from payment app
 
@@ -272,3 +272,8 @@ class ProductDeleteAPIView(APIView):
         product = Product.objects.get(pk=pk)
         product.delete()
         return Response({'message': 'Product deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+    
+#product media insert 
+class ProductMediaCreateView(CreateAPIView):
+    queryset = ProductMedia.objects.all()
+    serializer_class = ProductMediaSerializer
