@@ -37,6 +37,22 @@
 				"header": []
 			},
 			"response": []
+		},
+		{
+			"name": "add-product-media",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "get-product-media",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
 		}
 	]
 }

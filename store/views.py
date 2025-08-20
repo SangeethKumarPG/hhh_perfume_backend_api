@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework.views import APIView
-
+from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import RetrieveAPIView, CreateAPIView
 
@@ -277,3 +277,13 @@ class ProductDeleteAPIView(APIView):
 class ProductMediaCreateView(CreateAPIView):
     queryset = ProductMedia.objects.all()
     serializer_class = ProductMediaSerializer
+
+# fetch single product media
+class SingleProductMediaById(RetrieveAPIView):
+    serializer_class = ProductMediaSerializer
+    def get_object(self):
+        product_id = self.kwargs.get('product_id')
+        try:
+            return ProductMedia.objects.get(product_id=product_id)
+        except ProductMedia.DoesNotExist:
+            raise NotFound(detail="Product media does not exist for the product id")
