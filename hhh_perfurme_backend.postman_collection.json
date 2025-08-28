@@ -53,6 +53,39 @@
 				"header": []
 			},
 			"response": []
+		},
+		{
+			"name": "New Request",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"username\": \"john_doe\",\n  \"email\": \"john@example.com\",\n  \"full_name\": \"John Doe\",\n  \"password\": \"StrongPassword123!\",\n  \"password2\": \"StrongPassword123!\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/register/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"register",
+						""
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
