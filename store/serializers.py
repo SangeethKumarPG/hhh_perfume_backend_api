@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia
 
 
@@ -47,8 +49,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                 user.last_name = names[1]
             user.save()
         return user
-
-
 # Contact Form Serializer
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:
