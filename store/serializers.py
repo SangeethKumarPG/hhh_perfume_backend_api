@@ -14,13 +14,14 @@ class CategorySerializer(serializers.ModelSerializer):
 
 # Product Serializer (WITH IMAGE & CATEGORY DETAILS)
 class ProductSerializer(serializers.ModelSerializer):
+    brand = serializers.CharField(max_length=100, required=False, allow_blank=True)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     category_detail = CategorySerializer(source='category', read_only=True)
     image = serializers.ImageField(required=False, allow_null=True, use_url=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'description', 'stock', 'category', 'category_detail', 'image']
+        fields = ['id', 'brand','name','price', 'description', 'stock', 'category', 'category_detail', 'image']
 
 
 # User Registration Serializer
