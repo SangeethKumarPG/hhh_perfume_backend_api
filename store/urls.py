@@ -69,6 +69,10 @@ urlpatterns = [
     path('add-product-media', ProductMediaCreateView.as_view(), name="product-media-insert"),
 
     #fetch single product media
-    path('get-product-media/<int:product_id>', SingleProductMediaById.as_view(), name='single-product-media')
+    path('get-product-media/<int:product_id>', SingleProductMediaById.as_view(), name='single-product-media'),
+
+
+    # fetch products by category
+    path('categories/<int:category_id>/products/',ProductListAPIView.as_view(), name='product-list-by-category'),
 ]
 

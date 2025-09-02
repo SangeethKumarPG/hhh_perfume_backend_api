@@ -37,6 +37,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
 
+    @action(detail=True,methods=['get'])
+    def products(self,request,pk=None):
+        category=self.get_object()
+        products=Product.objects.filter(category=category)
+        serializer=ProductSerializer(products,many=True)
+        return Response(serializer.data)
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -62,11 +70,11 @@ def register_view(request):
 
 @api_view(['POST'])
 def login_view(request):
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
-    user = authenticate(username=username, password=password)
+    user = authenticate(email=email, password=password)
     if user:
-        return Response({"message": "Login successful", "username": user.username})
+        return Response({"message": "Login successful", "email": user.email})
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 

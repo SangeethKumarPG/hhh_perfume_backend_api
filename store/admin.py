@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Product, Category
+from .models import CustomUser, Product, Category,ProductMedia
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -23,4 +23,5 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('email',)
 
 admin.site.register(Product)
+admin.site.register(ProductMedia)
 admin.site.register(Category)
