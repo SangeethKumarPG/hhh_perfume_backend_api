@@ -3,6 +3,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 
 # ---------- Import ViewSets ----------
@@ -74,5 +78,8 @@ urlpatterns = [
 
     # fetch products by category
     path('categories/<int:category_id>/products/',ProductListAPIView.as_view(), name='product-list-by-category'),
+
+    #JWT token refresh
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 

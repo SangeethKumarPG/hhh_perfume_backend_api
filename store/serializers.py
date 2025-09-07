@@ -58,16 +58,41 @@ class ContactSerializer(serializers.ModelSerializer):
 
 
 # Cart & Basket Serializers
+# class CartItemSerializer(serializers.ModelSerializer):
+#     product_object = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+#     basket_object = serializers.PrimaryKeyRelatedField(queryset=Basket.objects.all(), required=False)
+#     item_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
+#     class Meta:
+#         model = BasketItem
+#         fields = '__all__'
+#         # If product_object and basket_object are writable on creation, remove them from read_only_fields
+#         read_only_fields = ["id", "quantity", "is_active", "is_order_placed"]
+
+#updated Serializer
 class CartItemSerializer(serializers.ModelSerializer):
-    product_object = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
-    basket_object = serializers.PrimaryKeyRelatedField(queryset=Basket.objects.all(), required=False)
-    item_total = serializers.DecimalField(source='item_total', max_digits=10, decimal_places=2, read_only=True)
+    product = serializers.SerializerMethodField()
+    product_object = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), write_only=True
+    )
+    basket_object = serializers.PrimaryKeyRelatedField(
+        queryset=Basket.objects.all(), required=False, write_only=True
+    )
+    item_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = BasketItem
-        fields = '__all__'
-        # If product_object and basket_object are writable on creation, remove them from read_only_fields
-        read_only_fields = ["id", "quantity", "is_active", "is_order_placed"]
+        fields = ['id', 'product', 'product_object', 'basket_object', 'quantity', 'item_total']
+        read_only_fields = ['id', 'quantity', 'item_total', 'is_active', 'is_order_placed']
+
+    def get_product(self, obj):
+        product = obj.product_object
+        return {
+            "id": product.id,
+            "name": product.name,
+            "price": str(product.price),
+            "image": product.image.url if product.image else None,
+        }
 
 
 class CartSerializer(serializers.ModelSerializer):

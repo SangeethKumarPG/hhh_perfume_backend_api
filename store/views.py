@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import RetrieveAPIView, CreateAPIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from store.models import (                    # store app models, except Invoice
     Category, Product, Contact,
@@ -74,6 +75,13 @@ def login_view(request):
     password = request.data.get('password')
     user = authenticate(email=email, password=password)
     if user:
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message" : "Login successful",
+            "email":user.email,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        })
         return Response({"message": "Login successful", "email": user.email})
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -149,16 +157,29 @@ class BasketItemViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
         basket, _ = Basket.objects.get_or_create(owner=request.user)
-        item, created = BasketItem.objects.get_or_create(
+
+        item = BasketItem.objects.filter(
             product_object=product,
             basket_object=basket,
-            is_order_placed=False,
-            defaults={'quantity': 1}
-        )
+            is_order_placed=False
+        ).first()
 
-        if not created:
-            item.quantity += 1
+        if item:
+            
+            if not item.is_active:
+                item.is_active = True
+                item.quantity = 1  
+            else:
+                item.quantity += 1
             item.save()
+        else:
+            item = BasketItem.objects.create(
+                product_object=product,
+                basket_object=basket,
+                quantity=1,
+                is_active=True,
+                is_order_placed=False
+            )
 
         return Response(CartItemSerializer(item).data, status=status.HTTP_201_CREATED)
 
@@ -192,6 +213,7 @@ class BasketItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='view-cart')
     def view_cart(self, request):
+        
         basket = Basket.objects.filter(owner=request.user).first()
         if not basket:
             return Response({'detail': 'Cart is empty'}, status=status.HTTP_404_NOT_FOUND)
