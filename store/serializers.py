@@ -11,17 +11,23 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+# ProductMedia Serializer
+class ProductMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductMedia
+        fields = ['id', 'product', 'media_type','file']
+
 
 # Product Serializer (WITH IMAGE & CATEGORY DETAILS)
 class ProductSerializer(serializers.ModelSerializer):
     brand = serializers.CharField(max_length=100, required=False, allow_blank=True)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
     category_detail = CategorySerializer(source='category', read_only=True)
-    image = serializers.ImageField(required=False, allow_null=True, use_url=True)
-
+    # image = serializers.ImageField(required=False, allow_null=True, use_url=True)
+    media=ProductMediaSerializer(many=True,read_only=True)
     class Meta:
         model = Product
-        fields = ['id', 'brand','name','price', 'description', 'stock', 'category', 'category_detail', 'image']
+        fields = ['id', 'brand','name','price', 'description', 'stock', 'category', 'category_detail', 'media']
 
 
 # User Registration Serializer
@@ -140,8 +146,3 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
 
-# ProductMedia Serializer
-class ProductMediaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductMedia
-        fields = ['id', 'product', 'image1','image2','image3', 'video']

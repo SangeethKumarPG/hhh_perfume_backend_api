@@ -50,7 +50,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = models.ImageField(upload_to='products/',null=True,blank=True)
     stock = models.PositiveIntegerField()
     available = models.BooleanField(default=True)
 
@@ -62,12 +62,13 @@ class Product(models.Model):
 # Product Media (Multiple Images/Videos)
 # ---------------------------
 class ProductMedia(models.Model):
+    MEDIA_TYPE_CHOICES=[
+        ('image','Image'),
+        ('video','Video'),
+    ]
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='media')
-    image1 = models.ImageField(upload_to='product_images/', blank=True, null=True)
-    image2 = models.ImageField(upload_to='product_images/', blank=True, null=True)
-    image3 = models.ImageField(upload_to='product_images/', blank=True, null=True)
-    video = models.FileField(upload_to='product_videos/', blank=True, null=True)
-
+    media_type=models.CharField(max_length=10,choices=MEDIA_TYPE_CHOICES,null=True,blank=True)
+    file=models.FileField(upload_to='product_images/',null=True,blank=True)
     def __str__(self):
         return f"Media for {self.product.name}"
 
@@ -188,4 +189,17 @@ class OrderItem(models.Model):
 
     def get_total_price(self):
         return self.quantity * self.price
+
+class Wishlist(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name="wishlists")
+    product=models.ForeignKey(Product,on_delete=models.CASCADE,related_name="wishlisted_by")
+    added_at=models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together=('user','product')
+        ordering=['added_at']
+
+        def __str__(self):
+            return f"({self.user.username}'s wishlist-{self.product.name})"
     
+        
