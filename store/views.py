@@ -311,7 +311,7 @@ class ProductMediaCreateView(CreateAPIView):
 # fetch single product media
 class SingleProductMediaById(ListAPIView):
     serializer_class = ProductMediaSerializer
-    def get_object(self):
+    def get_queryset(self):
         product_id = self.kwargs.get('product_id')
         try:
             return ProductMedia.objects.filter(product_id=product_id)
