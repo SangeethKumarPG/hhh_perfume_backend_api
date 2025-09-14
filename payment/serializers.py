@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Payment, Invoice
-from store.serializers import OrderSerializer  # assuming this is correct
+from store.serializers import OrderSerializer 
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:

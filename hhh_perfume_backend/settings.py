@@ -55,7 +55,7 @@ ROOT_URLCONF = 'hhh_perfume_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'payment','template','payment')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -143,7 +143,8 @@ REST_FRAMEWORK = {
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5500",  # your frontend origin
+    "http://127.0.0.1:5501",  # your frontend origin
+    "http://localhost:5173",
 ]
 
 

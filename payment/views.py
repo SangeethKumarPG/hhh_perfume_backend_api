@@ -37,9 +37,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     'amount': amount,
                 })
             except Exception as e:
-                return render(request, 'home.html', {'error': str(e)})
-
-        return render(request, 'home.html')
+                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                # return render(request,'home.html', {'error': str(e)})
+        # return render(request, 'home.html')
 
     @action(detail=False, methods=['post'], url_path='payment-status')
     def payment_status(self, request):

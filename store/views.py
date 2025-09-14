@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.generics import RetrieveAPIView, CreateAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from store.models import (                    # store app models, except Invoice
@@ -309,11 +309,11 @@ class ProductMediaCreateView(CreateAPIView):
     serializer_class = ProductMediaSerializer
 
 # fetch single product media
-class SingleProductMediaById(RetrieveAPIView):
+class SingleProductMediaById(ListAPIView):
     serializer_class = ProductMediaSerializer
-    def get_object(self):
+    def get_queryset(self):
         product_id = self.kwargs.get('product_id')
         try:
-            return ProductMedia.objects.get(product_id=product_id)
+            return ProductMedia.objects.filter(product_id=product_id)
         except ProductMedia.DoesNotExist:
             raise NotFound(detail="Product media does not exist for the product id")
