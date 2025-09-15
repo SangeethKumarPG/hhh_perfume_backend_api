@@ -84,8 +84,7 @@ def login_view(request):
         })
         return Response({"message": "Login successful", "email": user.email})
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
-
+ 
 
 def product_dashboard(request):
     products = Product.objects.all()

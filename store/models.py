@@ -158,9 +158,18 @@ class Order(models.Model):
     razorpay_order_id = models.CharField(max_length=255, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='Pending')
+
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    pincode = models.CharField(max_length=10, blank=True, null=True)
+
     shipping_address = models.TextField(blank=True, null=True)
     billing_address = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -173,7 +182,6 @@ class Order(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
 
 # ---------------------------
 # Order Item
