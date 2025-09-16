@@ -1,0 +1,34 @@
+# Django + DRF
+Django==5.0
+djangorestframework==3.15.0
+djangorestframework_simplejwt==5.5.0
+
+# CORS
+django-cors-headers==4.7.0
+
+# Auth (optional, if using social login / allauth)
+django-allauth==0.63.6
+social-auth-app-django==5.4.2
+social-auth-core==4.5.4
+
+# Forms / templates
+django-crispy-forms==2.2
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Database utils
+sqlparse==0.4.4
+asgiref==3.7.2
+tzdata==2023.4
+
+# Payments
+razorpay==1.4.2
+
+# Emails / HTML rendering
+reportlab==4.4.3       # for PDF invoices
+xhtml2pdf==0.2.17      # for HTML to PDF
+pytz==2024.1           # timezone support
+
+# HTTP client
+requests==2.32.3
