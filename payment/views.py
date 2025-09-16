@@ -4,6 +4,8 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 import razorpay
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
 
 from django.utils.crypto import get_random_string
 from store.models import Basket, Order, OrderItem
@@ -195,6 +197,126 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 is_order_placed=False
             ).update(is_order_placed=True)
 
+
+            order_items = order.items.all()  # related_name='items' in OrderItem model
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <style>
+                body {{
+                font-family: Arial, sans-serif;
+                background: #f9f9f9;
+                padding: 20px;
+                color: #333;
+                }}
+                .container {{
+                max-width: 600px;
+                margin: auto;
+                background: #fff;
+                border-radius: 8px;
+                padding: 20px;
+                box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+                }}
+                h2 {{ color: #2c3e50; }}
+                table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+                }}
+                th, td {{
+                border: 1px solid #ddd;
+                padding: 10px;
+                text-align: left;
+                }}
+                th {{
+                background: #2c3e50;
+                color: #fff;
+                }}
+                tfoot td {{
+                font-weight: bold;
+                }}
+                .address {{
+                margin-top: 20px;
+                background: #f2f2f2;
+                padding: 10px;
+                border-radius: 5px;
+                }}
+                .footer {{
+                margin-top: 20px;
+                font-size: 12px;
+                color: #777;
+                text-align: center;
+                }}
+            </style>
+            </head>
+            <body>
+            <div class="container">
+                <h2>Thank you for your purchase, {order.first_name}!</h2>
+                <p>Your order <strong>{order.order_id}</strong> has been confirmed.</p>
+
+                <h3>Order Details:</h3>
+                <table>
+                <thead>
+                    <tr>
+                    <th>Product</th>
+                    <th>Price (₹)</th>
+                    <th>Qty</th>
+                    <th>Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+
+            # Loop through order items
+            for item in order_items:
+                html_content += f"""
+                    <tr>
+                    <td>{item.product.name}</td>
+                    <td>{item.price}</td>
+                    <td>{item.quantity}</td>
+                    <td>{item.get_total_price()}</td>
+                    </tr>
+                """
+
+            html_content += f"""
+                </tbody>
+                <tfoot>
+                    <tr>
+                    <td colspan="3">Total</td>
+                    <td>{order.amount}</td>
+                    </tr>
+                </tfoot>
+                </table>
+
+                <div class="address">
+                <h3>Shipping Address</h3>
+                <p>{order.shipping_address}<br>
+                    {order.city}, {order.state} - {order.pincode}<br>
+                    Phone: {order.phone_number}
+                </p>
+                </div>
+
+                <div class="footer">
+                <p>HHH Perfumes &copy; {order.created_at.year}</p>
+                </div>
+            </div>
+            </body>
+            </html>
+            """
+
+            # Send email
+            email = EmailMessage(
+                subject=f"Order Confirmation - {order.order_id}",
+                body=html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[order.user.email],
+                cc=["hhhperfumesshop@gmail.com"],  
+            )
+            email.content_subtype = "html" 
+            email.send()
+
+
             return Response({
                 "message": "Payment verified and updated successfully",
                 "order_id": order.order_id,
@@ -205,4 +327,5 @@ class PaymentViewSet(viewsets.ModelViewSet):
             return Response({"error": "Signature verification failed"}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            print("error", str(e))
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
