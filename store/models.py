@@ -3,9 +3,10 @@ from django.utils.text import slugify
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser,User
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+import random
 
 
 # ---------------------------
@@ -210,4 +211,16 @@ class Wishlist(models.Model):
         def __str__(self):
             return f"({self.user.username}'s wishlist-{self.product.name})"
     
-        
+class PasswordReset(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    otp=models.CharField(max_length=6)
+    created_at=models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email}-{self.otp}"
+    
+
+
+    @staticmethod
+    def generate_otp():
+        return str(random.randint(100000,999999))
