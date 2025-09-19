@@ -22,6 +22,7 @@ from store.views import (
     product_detail_html_view,
     product_edit_view,
     product_delete_view,
+    WishListViewSet
 )
 from payment.views import PaymentViewSet, InvoiceViewSet
 
@@ -34,6 +35,7 @@ router.register(r'products', ProductViewSet, basename='products')
 router.register(r'cart', BasketItemViewSet, basename='cart')
 router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'contact', ContactView, basename='contact')
+router.register(r'wishlist',WishListViewSet,basename='wishlist')
 
 # Payment endpoints
 router.register(r'payments', PaymentViewSet, basename='payments')
@@ -55,6 +57,7 @@ def api_root(request, format=None):
             "Product Dashboard (API)": base('product_dashboard/'),
             "Product Detail (Example)": base('product/1/'),
             "Contact Form": base('contact/'),
+            "WishList":base('Wishlist/'),
         },
         "Cart Endpoints": {
             "Cart": base('cart/'),

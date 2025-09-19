@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 from .models import CustomUser
 
-from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia
+from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia,Wishlist
 
 
 # Category Serializer
@@ -141,12 +141,22 @@ class OrderSerializer(serializers.ModelSerializer):
         }
 
 
-# Invoice Serializer
+
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
 
+
+
+class WishListSerializer(serializers.ModelSerializer):
+    product_name=serializers.CharField(source="product.name",read_only=True)
+    product_price=serializers.DecimalField(source="product.price",max_digits=5,decimal_places=2,read_only=True)
+
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'product', 'product_name','product_price', 'added_at']
+        
 #Fetch Custom User Serializer
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:

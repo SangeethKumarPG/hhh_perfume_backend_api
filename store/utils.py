@@ -3,8 +3,9 @@
 from io import BytesIO
 from django.template.loader import get_template, render_to_string
 from xhtml2pdf import pisa
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage,send_mail
 from django.conf import settings
+import random
 
 
 def render_to_pdf(template_src, context_dict=None):
@@ -75,3 +76,17 @@ def send_payment_confirmation_emails(Order, customer_email, admin_email):
     except Exception as e:
         print(f"❌ Email sending failed: {e}")
         return False
+
+def generate_otp():
+    return str(random.randint(100000,999999))
+
+def send_verification_email(user,code):
+    subject="Password ResetVerification Code"
+    message=f"Hi{user.username},\n\n Otp for Password reset code is:{code}\nThis code will expire once used.\n\nIf you didn’t request this, please ignore."
+    send_mail(
+        subject,
+        message,
+        "no-reply@yourdomain.com",
+        [user.email],
+        fail_silently=False,
+    )

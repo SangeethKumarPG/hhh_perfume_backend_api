@@ -15,28 +15,36 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from .permissions import IsSuperUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated,AllowAny
+from django.contrib.auth.models import Userfrom
 
-from store.models import (                    # store app models, except Invoice
+from store.permissions import IsSuperUser
+
+from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
-    Basket, BasketItem, ProductMedia
+    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset
 )
-from payment.models import Invoice            # import Invoice from payment app
+from payment.models import Invoice            
 
 from store.serializers import (
     CategorySerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
-    CartItemSerializer, ProductMediaSerializer,
+    CartItemSerializer, ProductMediaSerializer,WishListSerializer,
     CustomUserSerializer
 )
-from payment.serializers import InvoiceSerializer   # import InvoiceSerializer from payment app
+from payment.serializers import InvoiceSerializer   
 
 from store.forms import ProductForm
-from store.utils import render_to_pdf
+from store.utils import render_to_pdf,send_mail
+from django.core.mail import send_mail
+from rest_framework import status
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth import get_user_model
 
 
+User=get_user_model()
 # -------------------------------------------
 # CATEGORY / PRODUCT / CONTACT API
 # -------------------------------------------
@@ -435,6 +443,92 @@ def dashboard_stats(request):
             for p in top_products
         ],
     })
+class WishListViewSet(viewsets.ModelViewSet):
+    serializer_class=WishListSerializer
+    permission_classes=[IsAuthenticated]
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        product_id = request.data.get("product")
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # check if already exists
+        if Wishlist.objects.filter(user=request.user, product=product).exists():
+            return Response({"message": "Product already exists in your wishlist"}, status=status.HTTP_200_OK)
+
+        # create wishlist entry
+        wishlist_item = Wishlist.objects.create(user=request.user, product=product)
+        serializer = self.get_serializer(wishlist_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False,methods=["delete"])
+    def remove(self,request):
+        product_id=request.data.get("product")
+        try:
+            wishlist_item=Wishlist.objects.get(user=request.user,product_id=product_id)
+        except Wishlist.DoesNotExist:
+            return Response({"error":"Item not Found in wishlist"},status=status.HTTP_404_NOT_FOUND)
+        
+        wishlist_item.delete()
+        return Response({"message":"Product removed from Wishlist"},status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email=request.data.get("email")
+    if not email:
+        return Response({"error":"Email is required"},status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user=User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error":"Email not registered"},status=status.HTTP_404_NOT_FOUND)
+    otp=PasswordReset.generate_otp()
+    PasswordReset.objects.create(user=user,otp=otp)
+
+    send_mail(
+        subject="Password Reset OTP",
+        message="Your OTP for password reset is: {otp}.Valid for 5 minutes.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )
+    return Response({"message":"OTP sent to your email"},status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    email=request.data.get("email")
+    otp=request.data.get("otp")
+    new_password=request.data.get("new_password")
+
+    if not all([email, otp, new_password]):
+        return Response({"error": "Email, OTP and new password required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        otp_entry = PasswordReset.objects.filter(user=user, otp=otp).latest('created_at')
+    except PasswordReset.DoesNotExist:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    
+    if timezone.now() - otp_entry.created_at > timedelta(minutes=5):
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+  
+    user.set_password(new_password)
+    user.save()
+
+    return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
+    
 
 # Fetch custom user details
 class CustomUserViewSet(viewsets.ModelViewSet):

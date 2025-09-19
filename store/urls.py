@@ -2,6 +2,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views
 from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById, ProductMediaDeleteView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -27,6 +28,7 @@ from .views import (
     product_edit_view,
     product_delete_view,
     dashboard_stats,
+    WishListViewSet,
     CustomUserViewSet
 )
 from payment.views import InvoiceViewSet
@@ -39,6 +41,7 @@ router.register(r'basket-items', BasketItemViewSet, basename='basketitem')
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
+router.register(r'Wishlist',WishListViewSet, basename='wishlist')
 router.register(r'users', CustomUserViewSet, basename="user")
 
 
@@ -92,5 +95,10 @@ urlpatterns = [
 
     #############################ADMIN DASHBOARD####################################
     path('dashboard-stats/',dashboard_stats, name='dashboard_stats'),
+
+    path("forgot_password/",views.forgot_password,name="forgot_password"),
+
+    path("reset_password/",views.reset_password,name="reset_password"),
+
 ]
 
