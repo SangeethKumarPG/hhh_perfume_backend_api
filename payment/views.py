@@ -311,7 +311,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 body=html_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[order.user.email],
-                cc=["hhhperfumesshop@gmail.com"],  
+                cc=["info@hhhperfumes.in"],  
             )
             email.content_subtype = "html" 
             email.send()
