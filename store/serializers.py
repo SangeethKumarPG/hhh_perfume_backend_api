@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model()
+from .models import CustomUser
 
 from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia
 
@@ -146,3 +147,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
 
+#Fetch Custom User Serializer
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "email", "phone_number", "is_active", "is_superuser", "date_joined"]
