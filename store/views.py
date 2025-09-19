@@ -16,7 +16,7 @@ from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated,AllowAny
-from django.contrib.auth.models import Userfrom
+# from django.contrib.auth.models import Userfrom
 
 from store.permissions import IsSuperUser
 
