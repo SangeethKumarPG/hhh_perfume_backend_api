@@ -9,14 +9,17 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView, DestroyAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated,AllowAny
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import Userfrom
+
+from store.permissions import IsSuperUser
+
 from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
@@ -27,7 +30,8 @@ from payment.models import Invoice
 from store.serializers import (
     CategorySerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
-    CartItemSerializer, ProductMediaSerializer,WishListSerializer
+    CartItemSerializer, ProductMediaSerializer,WishListSerializer,
+    CustomUserSerializer
 )
 from payment.serializers import InvoiceSerializer   
 
@@ -60,6 +64,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        """
+        Allow everyone (authenticated) to view products,
+        but only superusers can create, update, or delete.
+        """
+        if self.action in ["list", "retrieve"]:  # GET requests
+            permission_classes = [permissions.AllowAny]  # anyone can view
+        else:  # POST, PATCH, PUT, DELETE
+            permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+        return [permission() for permission in permission_classes]
 
 
 class ContactView(viewsets.ViewSet):
@@ -323,6 +338,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 # Product insert
 class ProductCreateAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated, IsSuperUser]
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -352,6 +368,11 @@ class ProductDeleteAPIView(APIView):
     
 #product media insert 
 class ProductMediaCreateView(CreateAPIView):
+    queryset = ProductMedia.objects.all()
+    serializer_class = ProductMediaSerializer
+
+#Delete Product Media View
+class ProductMediaDeleteView(DestroyAPIView):
     queryset = ProductMedia.objects.all()
     serializer_class = ProductMediaSerializer
 
@@ -508,3 +529,9 @@ def reset_password(request):
 
     return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
     
+
+# Fetch custom user details
+class CustomUserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all().order_by("-date_joined")
+    serializer_class = CustomUserSerializer
+    permission_classes = [IsSuperUser]

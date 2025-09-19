@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById
+from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById, ProductMediaDeleteView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -28,7 +28,8 @@ from .views import (
     product_edit_view,
     product_delete_view,
     dashboard_stats,
-    WishListViewSet
+    WishListViewSet,
+    CustomUserViewSet
 )
 from payment.views import InvoiceViewSet
 
@@ -41,6 +42,7 @@ router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
 router.register(r'Wishlist',WishListViewSet, basename='wishlist')
+router.register(r'users', CustomUserViewSet, basename="user")
 
 
 urlpatterns = [
@@ -77,6 +79,9 @@ urlpatterns = [
 
     #insert product media
     path('add-product-media', ProductMediaCreateView.as_view(), name="product-media-insert"),
+
+    #delete product media
+    path("delete-product-media/<int:pk>/", ProductMediaDeleteView.as_view(), name="delete-product-media"),
 
     #fetch single product media
     path('get-product-media/<int:product_id>', SingleProductMediaById.as_view(), name='single-product-media'),

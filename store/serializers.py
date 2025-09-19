@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model()
+from .models import CustomUser
 
 from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia,Wishlist
 
@@ -156,3 +157,8 @@ class WishListSerializer(serializers.ModelSerializer):
         model = Wishlist
         fields = ['id', 'product', 'product_name','product_price', 'added_at']
         
+#Fetch Custom User Serializer
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "email", "phone_number", "is_active", "is_superuser", "date_joined"]
