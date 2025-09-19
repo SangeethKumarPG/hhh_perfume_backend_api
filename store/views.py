@@ -11,9 +11,14 @@ from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncMonth
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 from store.models import (                    # store app models, except Invoice
-    Category, Product, Contact,
+    Category, CustomUser, Product, Contact,
     Order, OrderItem,
     Basket, BasketItem, ProductMedia
 )
@@ -74,17 +79,54 @@ def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
     user = authenticate(email=email, password=password)
+
     if user:
+
+        if not user.is_active:
+            return Response(
+                {"error": "User is blocked. Please contact support."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+  
         refresh = RefreshToken.for_user(user)
         return Response({
-            "message" : "Login successful",
-            "email":user.email,
+            "message": "Login successful",
+            "email": user.email,
             "access": str(refresh.access_token),
             "refresh": str(refresh)
-        })
-        return Response({"message": "Login successful", "email": user.email})
+        }, status=status.HTTP_200_OK)
     return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
- 
+
+@api_view(['POST'])
+def admin_login_view(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+    user = authenticate(email=email, password=password)
+
+    if user:
+        if not user.is_active:
+            return Response(
+                {"error": "User is blocked. Please contact support."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if not user.is_superuser:
+            return Response(
+                {"error": "You do not have admin access."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "message": "Admin login successful",
+            "email": user.email,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)
+
+    return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 def product_dashboard(request):
     products = Product.objects.all()
@@ -316,3 +358,61 @@ class SingleProductMediaById(ListAPIView):
             return ProductMedia.objects.filter(product_id=product_id)
         except ProductMedia.DoesNotExist:
             raise NotFound(detail="Product media does not exist for the product id")
+
+
+#Dashboard API
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])        
+@permission_classes([IsAuthenticated])  
+def dashboard_stats(request):
+    total_orders = Order.objects.count()
+
+    total_sales_value = Order.objects.aggregate(total=Sum("amount"))["total"] or 0
+
+    total_active_users = CustomUser.objects.filter(is_active=True, is_superuser=False).count()
+
+    total_blocked_users = CustomUser.objects.filter(is_active=False, is_superuser=False).count()
+
+    orders_per_month = (
+        Order.objects.annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(order_count=Count("id"))
+        .order_by("month")
+    )
+
+    sales_per_month = (
+        Order.objects.annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(total_sales=Sum("amount"))
+        .order_by("month")
+    )
+
+    top_products = (
+        OrderItem.objects.values("product__id", "product__name")
+        .annotate(total_quantity=Sum("quantity"), total_sales=Sum("price"))
+        .order_by("-total_quantity")[:5]  # Top 5 products
+    )
+
+    return Response({
+        "total_orders": total_orders,
+        "total_sales_value": float(total_sales_value),
+        "total_active_users": total_active_users,
+        "total_blocked_users": total_blocked_users,
+        "orders_per_month": [
+            {"month": o["month"].strftime("%B %Y"), "count": o["order_count"]}
+            for o in orders_per_month
+        ],
+        "sales_per_month": [
+            {"month": s["month"].strftime("%B %Y"), "total": float(s["total_sales"] or 0)}
+            for s in sales_per_month
+        ],
+        "top_selling_products": [
+            {
+                "id": p["product__id"],
+                "name": p["product__name"],
+                "total_quantity": p["total_quantity"],
+                "total_sales": float(p["total_sales"] or 0),
+            }
+            for p in top_products
+        ],
+    })

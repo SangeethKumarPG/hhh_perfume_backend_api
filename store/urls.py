@@ -19,12 +19,14 @@ from .views import (
     ContactView,
     register_view,
     login_view,
+    admin_login_view,
     product_dashboard,
     product_detail_view,
     product_dashboard_view,
     product_detail_html_view,
     product_edit_view,
     product_delete_view,
+    dashboard_stats
 )
 from payment.views import InvoiceViewSet
 
@@ -45,6 +47,7 @@ urlpatterns = [
     # Auth routes
     path('register/', register_view, name='register'),
     path('login/', login_view, name='login'),
+    path('admin-login/', admin_login_view, name='admin-login'),
 
     # Contact form API
     # path('contact/', ContactView.as_view(), name='contact'),
@@ -81,5 +84,8 @@ urlpatterns = [
 
     #JWT token refresh
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    #############################ADMIN DASHBOARD####################################
+    path('dashboard-stats/',dashboard_stats, name='dashboard_stats'),
 ]
 
