@@ -1,3 +1,5 @@
+from itertools import product
+from urllib import request
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.mail import EmailMessage
@@ -446,9 +448,9 @@ class WishListViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(wishlist_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False,methods=['post'],url_path='add_to_wishlist')
-    def add_to_wishlist(self,request):
-        product_id=request.data.get('product')
+    @action(detail=True,methods=['post'],url_path='add_to_wishlist')
+    def add_to_wishlist(self,request,pk=None):
+        product_id=pk
         if not product_id:
             return Response({"error":"Product ID is required"},status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -465,16 +467,20 @@ class WishListViewSet(viewsets.ModelViewSet):
 
 
 
-    @action(detail=False,methods=["delete"])
-    def remove(self,request):
-        product_id=request.data.get("product")
+    @action(detail=True, methods=['delete'], url_path='remove_from_wishlist')
+    def remove_from_wishlist(self, request, pk=None):
         try:
-            wishlist_item=Wishlist.objects.get(user=request.user,product_id=product_id)
+            product = Product.objects.get(id=pk)
+        except Product.DoesNotExist:
+            return Response({"error": "Product Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            wishlist_item = Wishlist.objects.get(user=request.user, product=product)
+            wishlist_item.delete()
+            return Response({"message": "Product removed from wishlist"}, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:
-            return Response({"error":"Item not Found in wishlist"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Product not in wishlist"}, status=status.HTTP_404_NOT_FOUND)
         
-        wishlist_item.delete()
-        return Response({"message":"Product removed from Wishlist"},status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
