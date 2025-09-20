@@ -334,6 +334,34 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"Email sending failed: {e}")
             return False
+    
+    #For updaing order status
+    @action(detail=False, methods=['patch'], url_path='update-status')
+    def update_status(self, request):
+        order_id = request.data.get("order_id")
+        new_status = request.data.get("status")
+
+        if not order_id or not new_status:
+            return Response({"error": "order_id and status are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if request.user.is_superuser:
+                # Superuser can update any order
+                order = Order.objects.get(order_id=order_id)
+            else:
+                # Normal user can only update their own orders
+                order = Order.objects.get(order_id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        order.status = new_status
+        order.save()
+
+        return Response({
+            "message": f"Order {order.order_id} updated to {new_status}",
+            "order_id": order.order_id,
+            "status": order.status
+        }, status=status.HTTP_200_OK)
 
 # Product insert
 class ProductCreateAPIView(APIView):
@@ -535,3 +563,49 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all().order_by("-date_joined")
     serializer_class = CustomUserSerializer
     permission_classes = [IsSuperUser]
+
+#Fetch orders in admin page
+class OrderDetailsViewSet(viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Order.objects.none()  # dummy queryset
+
+    def list(self, request, *args, **kwargs):
+        orders = Order.objects.select_related("user").prefetch_related("items__product")
+
+        data = []
+        for order in orders:
+            order_data = {
+                "order_id": order.order_id,
+                "razorpay_order_id": order.razorpay_order_id,
+                "user": {
+                    "id": order.user.id,
+                    "email": order.user.email,
+                    "first_name": order.first_name,
+                    "last_name": order.last_name,
+                },
+                "phone_number": order.phone_number,
+                "shipping_address": order.shipping_address,
+                "city": order.city,
+                "state": order.state,
+                "pincode": order.pincode,
+                "amount": str(order.amount),
+                "status": order.status,
+                "total_amount": str(order.order_total),
+                "created_at": order.created_at,
+                "updated_at": order.updated_at,
+                "items": [
+                    {
+                        "id": item.id,
+                        "product_id": item.product.id,
+                        "product_name": item.product.name,
+                        "product_price": str(item.product.price),
+                        "quantity": item.quantity,
+                        "price": str(item.price),
+                        "total": str(item.get_total_price()),
+                    }
+                    for item in order.items.all()
+                ],
+            }
+            data.append(order_data)
+
+        return Response(data)
