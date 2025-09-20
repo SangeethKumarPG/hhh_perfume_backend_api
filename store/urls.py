@@ -29,7 +29,8 @@ from .views import (
     product_delete_view,
     dashboard_stats,
     WishListViewSet,
-    CustomUserViewSet
+    CustomUserViewSet,
+    OrderDetailsViewSet,
 )
 from payment.views import InvoiceViewSet
 
@@ -43,6 +44,8 @@ router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
 router.register(r'Wishlist',WishListViewSet, basename='wishlist')
 router.register(r'users', CustomUserViewSet, basename="user")
+router.register(r'order-details', OrderDetailsViewSet, basename='order-details')
+
 
 
 urlpatterns = [
