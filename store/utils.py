@@ -90,3 +90,4 @@ def send_verification_email(user,code):
         [user.email],
         fail_silently=False,
     )
+    

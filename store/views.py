@@ -1,4 +1,6 @@
 from itertools import product
+from random import random
+import string
 from urllib import request
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
@@ -22,7 +24,7 @@ from django.contrib.auth.models import User
 from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
-    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset
+    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset,EmailVerificationCode,OTPVerification
 )
 from payment.models import Invoice            
 
@@ -44,6 +46,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+
 
 
 User=get_user_model()
@@ -543,4 +546,112 @@ def reset_password(request):
         except User.DoesNotExist:
             return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_verification_email(request):
+    email=request.data.get("email")
+    if not email:
+        return Response({"error":"Email is required"},status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user=User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error":"Email not registered"},status=status.HTTP_404_NOT_FOUND)
+    code=generate_otp()
+    EmailVerificationCode.objects.create(user=user,code=code)
+
+    send_mail(
+        subject="Email Verification Code",
+        message=f"Hi {user.username},\n\nYour verification code is: {code}\nThis code will expire once used.\n\nIf you didn’t request this, please ignore.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )
+    return Response({"message":"Verification code sent to your email"},status=status.HTTP_200_OK)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    email = request.data.get("email")
+    code = request.data.get("code")
+
+    if not all([email, code]):
+        return Response({"error": "Email and code required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        verification = EmailVerificationCode.objects.filter(user=user, code=code, is_used=False).latest("created_at")
+    except EmailVerificationCode.DoesNotExist:
+        return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if verification.is_expired():
+        return Response({"error": "Verification code expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.is_active = True
+    user.save()
+
+    verification.is_used = True
+    verification.save()
+
+    return Response({"message": "Email verified successfully."})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def send_otp(request):
+    email = request.data.get("email")
+    if not email:
+        return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    otp = "".join(random.choices(string.digits, k=6))  
+    OTPVerification.objects.create(user=user, otp=otp)
+
+    send_mail(
+        "Your OTP Code",
+        f"Your OTP is {otp}. It will expire in 5 minutes.",
+        "noreply@example.com",
+        [email],
+        fail_silently=False,
+    )
+
+    return Response({"message": "OTP sent to email."})
+
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    email = request.data.get("email")
+    otp = request.data.get("otp")
+
+    if not all([email, otp]):
+        return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        verification = OTPVerification.objects.filter(user=user, otp=otp, is_used=False).latest("created_at")
+    except OTPVerification.DoesNotExist:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if verification.is_expired():
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    verification.is_used = True
+    verification.save()
+
+    return Response({"message": "OTP verified successfully."})
+
+
+
+
 
