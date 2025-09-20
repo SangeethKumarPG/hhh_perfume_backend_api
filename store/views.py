@@ -445,7 +445,26 @@ class WishListViewSet(viewsets.ModelViewSet):
         wishlist_item = Wishlist.objects.create(user=request.user, product=product)
         serializer = self.get_serializer(wishlist_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
+    @action(detail=False,methods=['post'],url_path='add_to_wishlist')
+    def add_to_wishlist(self,request):
+        product_id=request.data.get('product')
+        if not product_id:
+            return Response({"error":"Product ID is required"},status=status.HTTP_400_BAD_REQUEST)
+        try:
+            product=Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error":"Product Not Found"},status=status.HTTP_404_NOT_FOUND)
+        if Wishlist.objects.filter(user=request.user,product=product).exists():
+            return Response({"message":"Product already in your wishlist"},status=status.HTTP_200_OK)
+
+        # create wishlist entry
+        wishlist_item = Wishlist.objects.create(user=request.user, product=product)
+        serializer = self.get_serializer(wishlist_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
     @action(detail=False,methods=["delete"])
     def remove(self,request):
         product_id=request.data.get("product")

@@ -57,7 +57,7 @@ def api_root(request, format=None):
             "Product Dashboard (API)": base('product_dashboard/'),
             "Product Detail (Example)": base('product/1/'),
             "Contact Form": base('contact/'),
-            "WishList":base('Wishlist/'),
+            "wishList":base('wishlist/'),
         },
         "Cart Endpoints": {
             "Cart": base('cart/'),
