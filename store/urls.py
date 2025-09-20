@@ -91,9 +91,9 @@ urlpatterns = [
     #############################ADMIN DASHBOARD####################################
     path('dashboard-stats/',dashboard_stats, name='dashboard_stats'),
 
-    path("forgot_password/",views.forgot_password,name="forgot_password"),
-
-    path("reset_password/",views.reset_password,name="reset_password"),
+    path("forgot-password/",views.forgot_password,name="forgot_password"),
+    path("request-reset-password/",views.request_password_reset,name="request_reset_password"),
+    path("reset-password/",views.reset_password,name="reset_password"),
 
 ]
 

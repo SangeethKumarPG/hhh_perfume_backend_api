@@ -38,8 +38,12 @@ from store.utils import render_to_pdf,send_mail
 from django.core.mail import send_mail
 from rest_framework import status
 from django.utils import timezone
+from .utils import generate_otp, send_verification_email
 from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 
 User=get_user_model()
@@ -503,33 +507,40 @@ def forgot_password(request):
     )
     return Response({"message":"OTP sent to your email"},status=status.HTTP_200_OK)
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+
+@csrf_exempt
+def request_password_reset(request):
+    if request.method=='POST':
+        email=request.POST.get('email')
+        try:
+            user=User.objects.get(email=email)
+            otp=generate_otp()
+            PasswordReset.objects.create(user=user,code=otp)
+            send_verification_email(user,otp)
+            return JsonResponse({"message":"Verification code sent to your email"})
+        except User.DoesNotExist:
+            return JsonResponse({"error":"No user found with this email."},status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
 def reset_password(request):
-    email=request.data.get("email")
-    otp=request.data.get("otp")
-    new_password=request.data.get("new_password")
+    if request.method=='POST':
+        email=request.POST.get("email")
+        otp=request.POST.get("otp")
+        new_password=request.POST.get("new_password")
+        try:
+            user=User.objects.get(email=email)
+            otp=PasswordReset.objects.filter(user=user,otp=otp,is_used=False).first()
+            if not otp:
+                return JsonResponse({"error":"Invalid OTP"},status=status.HTTP_400_BAD_REQUEST)
+            
+            user.password=make_password(new_password)
+            user.save()
 
-    if not all([email, otp, new_password]):
-        return Response({"error": "Email, OTP and new password required"}, status=status.HTTP_400_BAD_REQUEST)
+            otp.is_used=True
+            otp.save()
+            return JsonResponse({"message":"Password Reset Successfully"})
+        except User.DoesNotExist:
+            return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
-
-    try:
-        otp_entry = PasswordReset.objects.filter(user=user, otp=otp).latest('created_at')
-    except PasswordReset.DoesNotExist:
-        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
-
-    
-    if timezone.now() - otp_entry.created_at > timedelta(minutes=5):
-        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-  
-    user.set_password(new_password)
-    user.save()
-
-    return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
-    
