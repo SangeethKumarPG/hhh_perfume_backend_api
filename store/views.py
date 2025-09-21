@@ -473,17 +473,10 @@ class WishListViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(wishlist_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-
     @action(detail=True, methods=['delete'], url_path='remove_from_wishlist')
     def remove_from_wishlist(self, request, pk=None):
         try:
-            product = Product.objects.get(id=pk)
-        except Product.DoesNotExist:
-            return Response({"error": "Product Not Found"}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            wishlist_item = Wishlist.objects.get(user=request.user, product=product)
+            wishlist_item = Wishlist.objects.get(id=pk, user=request.user)
             wishlist_item.delete()
             return Response({"message": "Product removed from wishlist"}, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:

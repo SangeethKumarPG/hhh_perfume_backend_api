@@ -40,7 +40,7 @@ router.register(r'basket-items', BasketItemViewSet, basename='basketitem')
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
-router.register(r'Wishlist',WishListViewSet, basename='wishlist')
+router.register(r'wishlist',WishListViewSet, basename='wishlist')
 
 
 urlpatterns = [
