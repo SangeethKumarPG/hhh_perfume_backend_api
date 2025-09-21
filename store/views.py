@@ -1,3 +1,8 @@
+import datetime
+from itertools import product
+from random import random
+import string
+from urllib import request
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.mail import EmailMessage
@@ -23,7 +28,7 @@ from store.permissions import IsSuperUser
 from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
-    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset
+    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset,EmailVerificationCode,OTPVerification
 )
 from payment.models import Invoice            
 
@@ -40,8 +45,13 @@ from store.utils import render_to_pdf,send_mail
 from django.core.mail import send_mail
 from rest_framework import status
 from django.utils import timezone
+from .utils import generate_otp, send_verification_email
 from datetime import timedelta
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
 
 
 User=get_user_model()
@@ -494,17 +504,33 @@ class WishListViewSet(viewsets.ModelViewSet):
         wishlist_item = Wishlist.objects.create(user=request.user, product=product)
         serializer = self.get_serializer(wishlist_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    @action(detail=False,methods=["delete"])
-    def remove(self,request):
-        product_id=request.data.get("product")
+
+    @action(detail=True,methods=['post'],url_path='add_to_wishlist')
+    def add_to_wishlist(self,request,pk=None):
+        product_id=pk
+        if not product_id:
+            return Response({"error":"Product ID is required"},status=status.HTTP_400_BAD_REQUEST)
         try:
-            wishlist_item=Wishlist.objects.get(user=request.user,product_id=product_id)
+            product=Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error":"Product Not Found"},status=status.HTTP_404_NOT_FOUND)
+        if Wishlist.objects.filter(user=request.user,product=product).exists():
+            return Response({"message":"Product already in your wishlist"},status=status.HTTP_200_OK)
+
+        # create wishlist entry
+        wishlist_item = Wishlist.objects.create(user=request.user, product=product)
+        serializer = self.get_serializer(wishlist_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path='remove_from_wishlist')
+    def remove_from_wishlist(self, request, pk=None):
+        try:
+            wishlist_item = Wishlist.objects.get(id=pk, user=request.user)
+            wishlist_item.delete()
+            return Response({"message": "Product removed from wishlist"}, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:
-            return Response({"error":"Item not Found in wishlist"},status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Product not in wishlist"}, status=status.HTTP_404_NOT_FOUND)
         
-        wishlist_item.delete()
-        return Response({"message":"Product removed from Wishlist"},status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -516,26 +542,111 @@ def forgot_password(request):
         user=User.objects.get(email=email)
     except User.DoesNotExist:
         return Response({"error":"Email not registered"},status=status.HTTP_404_NOT_FOUND)
-    otp=PasswordReset.generate_otp()
+    otp=generate_otp()
     PasswordReset.objects.create(user=user,otp=otp)
 
     send_mail(
         subject="Password Reset OTP",
-        message="Your OTP for password reset is: {otp}.Valid for 5 minutes.",
+        message=f"Your OTP for password reset is: {otp}.Valid for 5 minutes.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
     )
     return Response({"message":"OTP sent to your email"},status=status.HTTP_200_OK)
 
+
+@csrf_exempt
+def request_password_reset(request):
+    if request.method=='POST':
+        email=request.POST.get('email')
+        try:
+            user=User.objects.get(email=email)
+            otp=generate_otp()
+            PasswordReset.objects.create(user=user,code=otp)
+            send_verification_email(user,otp)
+            return JsonResponse({"message":"Verification code sent to your email"})
+        except User.DoesNotExist:
+            return JsonResponse({"error":"No user found with this email."},status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# def reset_password(request):
+#     if request.method=='POST':
+#         email=request.POST.get("email")
+#         otp=request.POST.get("otp")
+#         new_password=request.POST.get("new_password")
+#         try:
+#             user=User.objects.get(email=email)
+#             otp=PasswordReset.objects.filter(user=user,otp=otp,is_used=False).first()
+#             if not otp:
+#                 return JsonResponse({"error":"Invalid OTP"},status=status.HTTP_400_BAD_REQUEST)
+            
+#             user.password=make_password(new_password)
+#             user.save()
+
+#             otp.is_used=True
+#             otp.save()
+#             return JsonResponse({"message":"Password Reset Successfully"})
+#         except User.DoesNotExist:
+#             return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
+#     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request):
-    email=request.data.get("email")
-    otp=request.data.get("otp")
-    new_password=request.data.get("new_password")
+    email = request.data.get("email")
+    otp = request.data.get("otp")
+    new_password = request.data.get("new_password")
 
     if not all([email, otp, new_password]):
-        return Response({"error": "Email, OTP and new password required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Email, OTP, and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    # validate OTP
+    verification = PasswordReset.objects.filter(user=user, otp=otp).order_by("-created_at").first()
+    if not verification:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if timezone.now() > verification.created_at + datetime.timedelta(minutes=10):
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # update password
+    user.set_password(new_password)
+    user.save()
+
+    return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_verification_email(request):
+    email=request.data.get("email")
+    if not email:
+        return Response({"error":"Email is required"},status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user=User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error":"Email not registered"},status=status.HTTP_404_NOT_FOUND)
+    code=generate_otp()
+    EmailVerificationCode.objects.create(user=user,code=code)
+
+    send_mail(
+        subject="Email Verification Code",
+        message=f"Hi {user.username},\n\nYour verification code is: {code}\nThis code will expire once used.\n\nIf you didn’t request this, please ignore.",
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )
+    return Response({"message":"Verification code sent to your email"},status=status.HTTP_200_OK)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    email = request.data.get("email")
+    code = request.data.get("code")
+
+    if not all([email, code]):
+        return Response({"error": "Email and code required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         user = User.objects.get(email=email)
@@ -543,20 +654,106 @@ def reset_password(request):
         return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        otp_entry = PasswordReset.objects.filter(user=user, otp=otp).latest('created_at')
-    except PasswordReset.DoesNotExist:
-        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        verification = EmailVerificationCode.objects.filter(user=user, code=code, is_used=False).latest("created_at")
+    except EmailVerificationCode.DoesNotExist:
+        return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
 
-    
-    if timezone.now() - otp_entry.created_at > timedelta(minutes=5):
-        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+    if verification.is_expired():
+        return Response({"error": "Verification code expired"}, status=status.HTTP_400_BAD_REQUEST)
 
-  
-    user.set_password(new_password)
+    user.is_active = True
     user.save()
 
-    return Response({"message": "Password updated successfully"}, status=status.HTTP_200_OK)
-    
+    verification.is_used = True
+    verification.save()
+
+    return Response({"message": "Email verified successfully."})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def send_otp(request):
+    email = request.data.get("email")
+    if not email:
+        return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    otp = "".join(random.choices(string.digits, k=6))  
+    OTPVerification.objects.create(user=user, otp=otp)
+
+    send_mail(
+        "Your OTP Code",
+        f"Your OTP is {otp}. It will expire in 5 minutes.",
+        "noreply@example.com",
+        [email],
+        fail_silently=False,
+    )
+
+    return Response({"message": "OTP sent to email."})
+
+
+
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def verify_otp(request):
+#     email = request.data.get("email")
+#     otp = request.data.get("otp")
+
+#     if not all([email, otp]):
+#         return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     try:
+#         user = User.objects.get(email=email)
+#     except User.DoesNotExist:
+#         return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+#     try:
+#         verification = OTPVerification.objects.filter(user=user, otp=otp, is_used=False).latest("created_at")
+#     except OTPVerification.DoesNotExist:
+#         return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     if verification.is_expired():
+#         return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     verification.is_used = True
+#     verification.save()
+
+#     return Response({"message": "OTP verified successfully."})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    email = request.data.get("email")
+    otp = request.data.get("otp")
+
+    if not all([email, otp]):
+        return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    # get the latest unused OTP
+    verification = PasswordReset.objects.filter(user=user, otp=otp).order_by("-created_at").first()
+
+    if not verification:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # check expiry (10 minutes)
+    if timezone.now() > verification.created_at + datetime.timedelta(minutes=10):
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+
+
+
+
+
+
 
 # Fetch custom user details
 class CustomUserViewSet(viewsets.ModelViewSet):

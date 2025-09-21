@@ -42,7 +42,7 @@ router.register(r'basket-items', BasketItemViewSet, basename='basketitem')
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
-router.register(r'Wishlist',WishListViewSet, basename='wishlist')
+router.register(r'wishlist',WishListViewSet, basename='wishlist')
 router.register(r'users', CustomUserViewSet, basename="user")
 router.register(r'order-details', OrderDetailsViewSet, basename='order-details')
 
@@ -99,9 +99,12 @@ urlpatterns = [
     #############################ADMIN DASHBOARD####################################
     path('dashboard-stats/',dashboard_stats, name='dashboard_stats'),
 
-    path("forgot_password/",views.forgot_password,name="forgot_password"),
-
-    path("reset_password/",views.reset_password,name="reset_password"),
-
-]
+    path("forgot-password/",views.forgot_password,name="forgot_password"),
+    path("request-reset-password/",views.request_password_reset,name="request_reset_password"),
+    path("reset-password/",views.reset_password,name="reset_password"),
+    path("send-verification-email/",views.send_verification_email,name="send_verification_email"),
+    path("verify-email/",views.verify_email,name="verify_email"),
+    path("send-otp/",views.send_otp,name="send_otp"),
+    path("verify-otp/",views.verify_otp,name="verify_otp")
+]   
 

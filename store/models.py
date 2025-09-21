@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import AbstractUser,User
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+import datetime
 import random
 
 
@@ -224,3 +225,25 @@ class PasswordReset(models.Model):
     @staticmethod
     def generate_otp():
         return str(random.randint(100000,999999))
+    
+
+class EmailVerificationCode(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    code=models.CharField(max_length=6)
+    created_at=models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        return timezone.now()>self.created_at+datetime.timedelta(minutes=10)
+    
+class OTPVerification(models.Model):
+    user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    otp=models.CharField(max_length=6)
+    created_at=models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    def is_expired(self):
+        return timezone.now()>self.created_at+datetime.timedelta(minutes=10)
+
+
+
+    
+  

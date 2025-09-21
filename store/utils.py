@@ -6,7 +6,7 @@ from xhtml2pdf import pisa
 from django.core.mail import EmailMessage,send_mail
 from django.conf import settings
 import random
-
+from django.conf import settings
 
 def render_to_pdf(template_src, context_dict=None):
     """
@@ -86,7 +86,8 @@ def send_verification_email(user,code):
     send_mail(
         subject,
         message,
-        "no-reply@yourdomain.com",
+        settings.EMAIL_HOST_USER,
         [user.email],
         fail_silently=False,
     )
+    
