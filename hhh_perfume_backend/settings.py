@@ -150,6 +150,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5501",  # your frontend origin
     "http://localhost:5173",
+    "http://localhost:5174",
 ]
 
 
