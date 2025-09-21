@@ -1,3 +1,4 @@
+import datetime
 from itertools import product
 from random import random
 import string
@@ -499,12 +500,12 @@ def forgot_password(request):
         user=User.objects.get(email=email)
     except User.DoesNotExist:
         return Response({"error":"Email not registered"},status=status.HTTP_404_NOT_FOUND)
-    otp=PasswordReset.generate_otp()
+    otp=generate_otp()
     PasswordReset.objects.create(user=user,otp=otp)
 
     send_mail(
         subject="Password Reset OTP",
-        message="Your OTP for password reset is: {otp}.Valid for 5 minutes.",
+        message=f"Your OTP for password reset is: {otp}.Valid for 5 minutes.",
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
     )
@@ -526,26 +527,55 @@ def request_password_reset(request):
     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-def reset_password(request):
-    if request.method=='POST':
-        email=request.POST.get("email")
-        otp=request.POST.get("otp")
-        new_password=request.POST.get("new_password")
-        try:
-            user=User.objects.get(email=email)
-            otp=PasswordReset.objects.filter(user=user,otp=otp,is_used=False).first()
-            if not otp:
-                return JsonResponse({"error":"Invalid OTP"},status=status.HTTP_400_BAD_REQUEST)
+# def reset_password(request):
+#     if request.method=='POST':
+#         email=request.POST.get("email")
+#         otp=request.POST.get("otp")
+#         new_password=request.POST.get("new_password")
+#         try:
+#             user=User.objects.get(email=email)
+#             otp=PasswordReset.objects.filter(user=user,otp=otp,is_used=False).first()
+#             if not otp:
+#                 return JsonResponse({"error":"Invalid OTP"},status=status.HTTP_400_BAD_REQUEST)
             
-            user.password=make_password(new_password)
-            user.save()
+#             user.password=make_password(new_password)
+#             user.save()
 
-            otp.is_used=True
-            otp.save()
-            return JsonResponse({"message":"Password Reset Successfully"})
-        except User.DoesNotExist:
-            return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
-    return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+#             otp.is_used=True
+#             otp.save()
+#             return JsonResponse({"message":"Password Reset Successfully"})
+#         except User.DoesNotExist:
+#             return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
+#     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    email = request.data.get("email")
+    otp = request.data.get("otp")
+    new_password = request.data.get("new_password")
+
+    if not all([email, otp, new_password]):
+        return Response({"error": "Email, OTP, and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+    # validate OTP
+    verification = PasswordReset.objects.filter(user=user, otp=otp).order_by("-created_at").first()
+    if not verification:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if timezone.now() > verification.created_at + datetime.timedelta(minutes=10):
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # update password
+    user.set_password(new_password)
+    user.save()
+
+    return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -624,6 +654,33 @@ def send_otp(request):
 
 
 
+# @api_view(["POST"])
+# @permission_classes([AllowAny])
+# def verify_otp(request):
+#     email = request.data.get("email")
+#     otp = request.data.get("otp")
+
+#     if not all([email, otp]):
+#         return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     try:
+#         user = User.objects.get(email=email)
+#     except User.DoesNotExist:
+#         return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+
+#     try:
+#         verification = OTPVerification.objects.filter(user=user, otp=otp, is_used=False).latest("created_at")
+#     except OTPVerification.DoesNotExist:
+#         return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     if verification.is_expired():
+#         return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     verification.is_used = True
+#     verification.save()
+
+#     return Response({"message": "OTP verified successfully."})
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def verify_otp(request):
@@ -634,22 +691,22 @@ def verify_otp(request):
         return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
         return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
 
-    try:
-        verification = OTPVerification.objects.filter(user=user, otp=otp, is_used=False).latest("created_at")
-    except OTPVerification.DoesNotExist:
+    # get the latest unused OTP
+    verification = PasswordReset.objects.filter(user=user, otp=otp).order_by("-created_at").first()
+
+    if not verification:
         return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if verification.is_expired():
+    # check expiry (10 minutes)
+    if timezone.now() > verification.created_at + datetime.timedelta(minutes=10):
         return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
 
-    verification.is_used = True
-    verification.save()
+    return Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
 
-    return Response({"message": "OTP verified successfully."})
 
 
 
