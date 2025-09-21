@@ -14,14 +14,17 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView,ListAPIView, DestroyAPIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated,AllowAny
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import Userfrom
+
+from store.permissions import IsSuperUser
+
 from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
@@ -32,7 +35,8 @@ from payment.models import Invoice
 from store.serializers import (
     CategorySerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
-    CartItemSerializer, ProductMediaSerializer,WishListSerializer
+    CartItemSerializer, ProductMediaSerializer,WishListSerializer,
+    CustomUserSerializer
 )
 from payment.serializers import InvoiceSerializer   
 
@@ -70,6 +74,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        """
+        Allow everyone (authenticated) to view products,
+        but only superusers can create, update, or delete.
+        """
+        if self.action in ["list", "retrieve"]:  # GET requests
+            permission_classes = [permissions.AllowAny]  # anyone can view
+        else:  # POST, PATCH, PUT, DELETE
+            permission_classes = [permissions.IsAuthenticated, IsSuperUser]
+        return [permission() for permission in permission_classes]
 
 
 class ContactView(viewsets.ViewSet):
@@ -329,10 +344,39 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"Email sending failed: {e}")
             return False
+    
+    #For updaing order status
+    @action(detail=False, methods=['patch'], url_path='update-status')
+    def update_status(self, request):
+        order_id = request.data.get("order_id")
+        new_status = request.data.get("status")
+
+        if not order_id or not new_status:
+            return Response({"error": "order_id and status are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if request.user.is_superuser:
+                # Superuser can update any order
+                order = Order.objects.get(order_id=order_id)
+            else:
+                # Normal user can only update their own orders
+                order = Order.objects.get(order_id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        order.status = new_status
+        order.save()
+
+        return Response({
+            "message": f"Order {order.order_id} updated to {new_status}",
+            "order_id": order.order_id,
+            "status": order.status
+        }, status=status.HTTP_200_OK)
 
 # Product insert
 class ProductCreateAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated, IsSuperUser]
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -362,6 +406,11 @@ class ProductDeleteAPIView(APIView):
     
 #product media insert 
 class ProductMediaCreateView(CreateAPIView):
+    queryset = ProductMedia.objects.all()
+    serializer_class = ProductMediaSerializer
+
+#Delete Product Media View
+class ProductMediaDeleteView(DestroyAPIView):
     queryset = ProductMedia.objects.all()
     serializer_class = ProductMediaSerializer
 
@@ -705,3 +754,55 @@ def verify_otp(request):
 
 
 
+
+# Fetch custom user details
+class CustomUserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all().order_by("-date_joined")
+    serializer_class = CustomUserSerializer
+    permission_classes = [IsSuperUser]
+
+#Fetch orders in admin page
+class OrderDetailsViewSet(viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Order.objects.none()  # dummy queryset
+
+    def list(self, request, *args, **kwargs):
+        orders = Order.objects.select_related("user").prefetch_related("items__product")
+
+        data = []
+        for order in orders:
+            order_data = {
+                "order_id": order.order_id,
+                "razorpay_order_id": order.razorpay_order_id,
+                "user": {
+                    "id": order.user.id,
+                    "email": order.user.email,
+                    "first_name": order.first_name,
+                    "last_name": order.last_name,
+                },
+                "phone_number": order.phone_number,
+                "shipping_address": order.shipping_address,
+                "city": order.city,
+                "state": order.state,
+                "pincode": order.pincode,
+                "amount": str(order.amount),
+                "status": order.status,
+                "total_amount": str(order.order_total),
+                "created_at": order.created_at,
+                "updated_at": order.updated_at,
+                "items": [
+                    {
+                        "id": item.id,
+                        "product_id": item.product.id,
+                        "product_name": item.product.name,
+                        "product_price": str(item.product.price),
+                        "quantity": item.quantity,
+                        "price": str(item.price),
+                        "total": str(item.get_total_price()),
+                    }
+                    for item in order.items.all()
+                ],
+            }
+            data.append(order_data)
+
+        return Response(data)
