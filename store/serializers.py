@@ -2,7 +2,19 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
-from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia,Wishlist
+from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia,Wishlist,HeroSection
+
+
+# --------------------------------------------------------------------------------------
+# ----------------------------------HERO SECTION---------------------------------
+# ---------------------------------------------------------------------------------------
+
+
+class HeroSectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HeroSection
+        fields = '__all__'
+
 
 
 # Category Serializer
@@ -130,14 +142,28 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ("id", "user", "order_id", "created_at", "updated_at")
-        extra_kwargs = {
-            'address': {'required': True},
-            'total_amount': {'required': True},
-            'status': {'required': True},
-            'is_paid': {'required': True},
-            'items': {'required': False}
-        }
+        read_only_fields = ("id", "items","order_id", "created_at", "updated_at")
+        # extra_kwargs = {
+        #     'address': {'required': True},
+        #     'total_amount': {'required': True},
+        #     'status': {'required': True},
+        #     'is_paid': {'required': True},
+        #     'items': {'required': False}
+        # }
+    def create(self,validated_data):
+        items_data=validated_data.pop('items',[])
+        order=Order.objects.create(**validated_data)
+        for item_data in items_data:
+            product=item_data['product']
+            quantity=item_data.get('quantity',1)
+            if product.stock<quantity:
+                raise serializers.ValidationError(f"{product.name} Currently Out of Stock")
+            
+            product.stock-=quantity
+            product.save()
+
+            OrderItem.objects.create(order=order,product=product,quantity=quantity)
+        return order
 
 
 
@@ -148,11 +174,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 
+        
+
 class WishListSerializer(serializers.ModelSerializer):
     product_name=serializers.CharField(source="product.name",read_only=True)
     product_price=serializers.DecimalField(source="product.price",max_digits=5,decimal_places=2,read_only=True)
+    image=serializers.ImageField(source="product.image",read_only=True)
+    brand=serializers.CharField(source="product.brand",read_only=True)
 
     class Meta:
         model = Wishlist
-        fields = ['id', 'product', 'product_name','product_price', 'added_at']
-        
+        fields = ['id', 'product','image', 'product_name','product_price', 'added_at','brand']

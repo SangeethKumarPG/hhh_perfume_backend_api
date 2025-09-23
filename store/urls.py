@@ -3,7 +3,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById
+from .views import HeroSectionViewSet, ProductCreateAPIView, ProductDeleteAPIView, ProductDetailAPIView, ProductListAPIView, ProductMediaCreateView, SingleProductMediaById
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -28,12 +28,15 @@ from .views import (
     product_edit_view,
     product_delete_view,
     dashboard_stats,
-    WishListViewSet
+    WishListViewSet,
+    HeroSectionViewSet
+    
 )
 from payment.views import InvoiceViewSet
 
 
 router = DefaultRouter()
+router.register(r'hero-section',HeroSectionViewSet,basename='hero-section')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'products', ProductViewSet, basename='product')
 router.register(r'basket-items', BasketItemViewSet, basename='basketitem')
@@ -41,6 +44,7 @@ router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'contact', ContactView, basename='contact')
 router.register(r'Wishlist',WishListViewSet, basename='wishlist')
+
 
 
 urlpatterns = [
@@ -97,6 +101,7 @@ urlpatterns = [
     path("send-verification-email/",views.send_verification_email,name="send_verification_email"),
     path("verify-email/",views.verify_email,name="verify_email"),
     path("send-otp/",views.send_otp,name="send_otp"),
-    path("verify-otp/",views.verify_otp,name="verify_otp")
-]   
+    path("verify-otp/",views.verify_otp,name="verify_otp"),
+    # path("create-order/", views.create_order, name="create_order"),
+]
 

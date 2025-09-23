@@ -22,22 +22,47 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
+    
+
+# ///////////////////////////////////////////////////////////////////////////////
+# --------------------------------HERO SECTION-----------------------------------
+# ////////////////////////////////////////////////////////////////////////////////
+
+class HeroSection(models.Model):
+    title=models.CharField(max_length=200)
+    subtitle=models.CharField(max_length=300,blank=True,null=True)
+    image=models.ImageField(upload_to='hero_images/')
+    description=models.TextField(blank=True,null=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.title
 
 
-# ---------------------------
-# Category Model
-# ---------------------------
+
+
+
+# //////////////////////////////////////////////////////////
+
+# ---------------------------------------------------------------------------------
+#    --------------------------------------Category Model
+# ----------------------------------------------------------------------------------
+
+# ///////////////////////////////////////////////////////////////
+
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    title = models.CharField(max_length=100)
+    category_image=models.ImageField(upload_to='category_images/',null=True,blank=True)
     slug = models.SlugField(unique=True, blank=True)
+
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.title
 
     class Meta:
         verbose_name_plural = "Categories"
@@ -150,8 +175,8 @@ ORDER_STATUS_CHOICES = [
     ('Pending', 'Pending'),
     ('Processing', 'Processing'),
     ('Shipped', 'Shipped'),
-    ('Delivered', 'Delivered'),
-    ('Cancelled', 'Cancelled'),
+    # ('Delivered', 'Delivered'),
+    # ('Cancelled', 'Cancelled'),
 ]
 
 class Order(models.Model):
@@ -160,14 +185,12 @@ class Order(models.Model):
     razorpay_order_id = models.CharField(max_length=255, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='Pending')
-
     first_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
-
     shipping_address = models.TextField(blank=True, null=True)
     billing_address = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
@@ -199,7 +222,15 @@ class OrderItem(models.Model):
 
     def get_total_price(self):
         return self.quantity * self.price
+    
 
+# ------------------------------------------------------------------------------------------
+
+
+# ---------------------------------WISHLIST----------------------------------
+
+
+# ------------------------------------------------------------------------------------------
 class Wishlist(models.Model):
     user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name="wishlists")
     product=models.ForeignKey(Product,on_delete=models.CASCADE,related_name="wishlisted_by")
@@ -211,6 +242,9 @@ class Wishlist(models.Model):
 
         def __str__(self):
             return f"({self.user.username}'s wishlist-{self.product.name})"
+        
+#--------------------------------------------------------------------------------------------------
+# -------------------------------PASSWORD RESET & EMAIL VERIFICATION--------------------------- 
     
 class PasswordReset(models.Model):
     user=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)

@@ -5,7 +5,6 @@ from urllib import request
 from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.mail import EmailMessage
-
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
@@ -22,16 +21,16 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import IsAdminUser, IsAuthenticated,AllowAny
 from django.contrib.auth.models import User
 from store.models import (                    
-    Category, CustomUser, Product, Contact,
+    Category, CustomUser, HeroSection, Product, Contact,
     Order, OrderItem,
     Basket, BasketItem, ProductMedia,Wishlist,PasswordReset,EmailVerificationCode,OTPVerification
 )
 from payment.models import Invoice            
 
 from store.serializers import (
-    CategorySerializer, ProductSerializer, ContactSerializer,
+    CategorySerializer, HeroSectionSerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
-    CartItemSerializer, ProductMediaSerializer,WishListSerializer
+    CartItemSerializer, ProductMediaSerializer,WishListSerializer,HeroSectionSerializer
 )
 from payment.serializers import InvoiceSerializer   
 
@@ -50,6 +49,17 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 User=get_user_model()
+
+# ----------------------------------------------------
+# HERO SECTION
+# ----------------------------------------------------
+class HeroSectionViewSet(viewsets.ModelViewSet):
+    queryset = HeroSection.objects.all()
+    serializer_class = HeroSectionSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+
+
 # -------------------------------------------
 # CATEGORY / PRODUCT / CONTACT API
 # -------------------------------------------
@@ -69,6 +79,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
 
 
 class ContactView(viewsets.ViewSet):
@@ -219,6 +230,9 @@ class BasketItemViewSet(viewsets.ModelViewSet):
             basket_object=basket,
             is_order_placed=False
         ).first()
+        # quantity=request.data.get('quantity',1)
+        # quantity=int(quantity) if str(quantity).isdigit() and int(quantity)>0 else 1
+        
 
         if item:
             
@@ -252,6 +266,7 @@ class BasketItemViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='update-quantity')
     def update_quantity(self, request, pk=None):
         quantity = request.data.get('quantity')
+
         try:
             quantity = int(quantity)
             if quantity < 1:
@@ -286,7 +301,29 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
+        order = serializer.save(user=request.user)  
+
+        for item in order.items.all():
+            product = item.product
+            if product.stock >= item.quantity:  
+                product.stock -= item.quantity
+                product.save()
+            else:
+                return Response(
+                    {"error": f"Not enough stock for {product.name}. Only {product.stock} left."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED, headers=headers)
+   
+        
+   
     @action(detail=True, methods=['post'])
     def confirm_order(self, request, pk=None):
         order = get_object_or_404(Order, id=pk, user=request.user)
@@ -431,6 +468,12 @@ def dashboard_stats(request):
             for p in top_products
         ],
     })
+
+
+
+# -----------------------------------------------------------------
+# -------------------WISHLIST API---------------------
+# -------------------------------------------------------------------   
 class WishListViewSet(viewsets.ModelViewSet):
     serializer_class=WishListSerializer
     permission_classes=[IsAuthenticated]
@@ -440,6 +483,7 @@ class WishListViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         product_id = request.data.get("product")
+        product_object=Product
 
         try:
             product = Product.objects.get(id=product_id)
@@ -473,7 +517,6 @@ class WishListViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-
     @action(detail=True, methods=['delete'], url_path='remove_from_wishlist')
     def remove_from_wishlist(self, request, pk=None):
         try:
@@ -487,7 +530,11 @@ class WishListViewSet(viewsets.ModelViewSet):
             return Response({"message": "Product removed from wishlist"}, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:
             return Response({"error": "Product not in wishlist"}, status=status.HTTP_404_NOT_FOUND)
-        
+
+
+# -------------------------------------------------------------------
+# -------------------FORGOT PASSWORD---------------------
+# ----------------------------------------------------------------------
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -511,6 +558,10 @@ def forgot_password(request):
     return Response({"message":"OTP sent to your email"},status=status.HTTP_200_OK)
 
 
+# -------------------------------------------------------------------
+# -------------------REQUEST PASSWORD RESET---------------------
+# ----------------------------------------------------------------------
+
 @csrf_exempt
 def request_password_reset(request):
     if request.method=='POST':
@@ -526,6 +577,11 @@ def request_password_reset(request):
     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+
+
+# -------------------------------------------------------------------
+# -------------------RESET PASSWORD---------------------
+# ----------------------------------------------------------------------
 def reset_password(request):
     if request.method=='POST':
         email=request.POST.get("email")
@@ -547,6 +603,10 @@ def reset_password(request):
             return JsonResponse({"error":"Invalid Email"},status=status.HTTP_400_BAD_REQUEST)
     return JsonResponse({"error":"Invalid Request"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+# -------------------------------------------------------------------
+# -------------------SEND VERIFICATION EMAIL---------------------
+# ----------------------------------------------------------------------
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def send_verification_email(request):
@@ -567,6 +627,12 @@ def send_verification_email(request):
         recipient_list=[email],
     )
     return Response({"message":"Verification code sent to your email"},status=status.HTTP_200_OK)
+
+
+
+# -------------------------------------------------------------------
+# -------------------EMAIL VERIFICATION---------------------
+# ----------------------------------------------------------------------
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_email(request):
@@ -596,6 +662,9 @@ def verify_email(request):
     verification.save()
 
     return Response({"message": "Email verified successfully."})
+# -------------------------------------------------------------------
+# -------------------OTP SENDING---------------------
+# ----------------------------------------------------------------------
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -622,7 +691,9 @@ def send_otp(request):
 
     return Response({"message": "OTP sent to email."})
 
-
+# -------------------------------------------------------------------
+# -------------------OTP VERIFICATION---------------------
+# ----------------------------------------------------------------------
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
