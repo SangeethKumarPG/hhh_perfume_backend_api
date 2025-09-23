@@ -56,7 +56,7 @@ User=get_user_model()
 class HeroSectionViewSet(viewsets.ModelViewSet):
     queryset = HeroSection.objects.all()
     serializer_class = HeroSectionSerializer
-    permission_classes = [permissions.IsAdminUser]
+
 
 
 
