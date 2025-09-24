@@ -31,6 +31,8 @@ from .views import (
     WishListViewSet,
     CustomUserViewSet,
     OrderDetailsViewSet,
+    MyOrdersViewSet,
+    HeroSectionViewSet,
 )
 from payment.views import InvoiceViewSet
 
@@ -45,7 +47,8 @@ router.register(r'contact', ContactView, basename='contact')
 router.register(r'wishlist',WishListViewSet, basename='wishlist')
 router.register(r'users', CustomUserViewSet, basename="user")
 router.register(r'order-details', OrderDetailsViewSet, basename='order-details')
-
+router.register(r'my-orders', MyOrdersViewSet, basename='my-orders')
+router.register(r'herosection', HeroSectionViewSet, basename='herosection')
 
 
 urlpatterns = [

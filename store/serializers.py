@@ -1,13 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model()
-from .models import CustomUser
+from .models import CustomUser, HeroSection
 
 from .models import Category, Product, Contact, Order, OrderItem, Basket, BasketItem, ProductMedia,Wishlist
 
 
 # Category Serializer
 class CategorySerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, allow_null=True, use_url=True)
     class Meta:
         model = Category
         fields = '__all__'
@@ -162,3 +163,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["id", "username", "email", "phone_number", "is_active", "is_superuser", "date_joined"]
+
+# Hero Section Serializer
+class HeroSectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HeroSection
+        fields = '__all__'

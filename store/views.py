@@ -28,7 +28,8 @@ from store.permissions import IsSuperUser
 from store.models import (                    
     Category, CustomUser, Product, Contact,
     Order, OrderItem,
-    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset,EmailVerificationCode,OTPVerification
+    Basket, BasketItem, ProductMedia,Wishlist,PasswordReset,EmailVerificationCode,OTPVerification,
+    HeroSection
 )
 from payment.models import Invoice            
 
@@ -36,7 +37,8 @@ from store.serializers import (
     CategorySerializer, ProductSerializer, ContactSerializer,
     UserRegistrationSerializer, OrderSerializer, OrderItemSerializer,
     CartItemSerializer, ProductMediaSerializer,WishListSerializer,
-    CustomUserSerializer
+    CustomUserSerializer,
+    HeroSectionSerializer
 )
 from payment.serializers import InvoiceSerializer   
 
@@ -61,13 +63,22 @@ User=get_user_model()
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    parser_classes = [MultiPartParser, FormParser]
 
+    def get_permissions(self):
+        """
+        - Allow everyone to view categories & products (GET).
+        - Only superusers can create, update, delete.
+        """
+        if self.action in ["list", "retrieve", "products"]:
+            return [permissions.AllowAny()]  
+        return [IsSuperUser()] 
 
-    @action(detail=True,methods=['get'])
-    def products(self,request,pk=None):
-        category=self.get_object()
-        products=Product.objects.filter(category=category)
-        serializer=ProductSerializer(products,many=True)
+    @action(detail=True, methods=["get"])
+    def products(self, request, pk=None):
+        category = self.get_object()
+        products = Product.objects.filter(category=category)
+        serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
 
@@ -228,6 +239,9 @@ class BasketItemViewSet(viewsets.ModelViewSet):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        if product.stock < 1:
+            return Response({'error': 'Product is out of stock'}, status=status.HTTP_400_BAD_REQUEST)
+
         basket, _ = Basket.objects.get_or_create(owner=request.user)
 
         item = BasketItem.objects.filter(
@@ -237,14 +251,21 @@ class BasketItemViewSet(viewsets.ModelViewSet):
         ).first()
 
         if item:
-            
             if not item.is_active:
                 item.is_active = True
-                item.quantity = 1  
+                item.quantity = 1
+                product.stock -= 1
+                product.save()
             else:
+                if product.stock < 1:
+                    return Response({'error': 'No more stock available'}, status=status.HTTP_400_BAD_REQUEST)
                 item.quantity += 1
+                product.stock -= 1
+                product.save()
             item.save()
         else:
+            product.stock -= 1
+            product.save()
             item = BasketItem.objects.create(
                 product_object=product,
                 basket_object=basket,
@@ -259,11 +280,16 @@ class BasketItemViewSet(viewsets.ModelViewSet):
     def remove_from_cart(self, request, pk=None):
         try:
             item = BasketItem.objects.get(pk=pk, basket_object__owner=request.user, is_order_placed=False)
+            product = item.product_object
+            product.stock += item.quantity
+            product.save()
+
             item.is_active = False
             item.save()
             return Response({'detail': 'Item removed from cart'}, status=status.HTTP_204_NO_CONTENT)
         except BasketItem.DoesNotExist:
             return Response({'detail': 'Item not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
     @action(detail=True, methods=['patch'], url_path='update-quantity')
     def update_quantity(self, request, pk=None):
@@ -806,3 +832,68 @@ class OrderDetailsViewSet(viewsets.GenericViewSet):
             data.append(order_data)
 
         return Response(data)
+    
+# My orders
+class MyOrdersViewSet(viewsets.GenericViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Order.objects.none()  # dummy queryset
+
+    def list(self, request, *args, **kwargs):
+        orders = (
+            Order.objects.filter(user=request.user)
+            .select_related("user")
+            .prefetch_related("items__product")
+        )
+
+        data = []
+        for order in orders:
+            order_data = {
+                "order_id": order.order_id,
+                "razorpay_order_id": order.razorpay_order_id,
+                "user": {
+                    "id": order.user.id,
+                    "email": order.user.email,
+                    "first_name": order.first_name,
+                    "last_name": order.last_name,
+                },
+                "phone_number": order.phone_number,
+                "shipping_address": order.shipping_address,
+                "city": order.city,
+                "state": order.state,
+                "pincode": order.pincode,
+                "amount": str(order.amount),
+                "status": order.status,
+                "total_amount": str(order.order_total),
+                "created_at": order.created_at,
+                "updated_at": order.updated_at,
+                "items": [
+                    {
+                        "id": item.id,
+                        "product_id": item.product.id,
+                        "product_name": item.product.name,
+                        "product_price": str(item.product.price),
+                        "quantity": item.quantity,
+                        "price": str(item.price),
+                        "total": str(item.get_total_price()),
+                    }
+                    for item in order.items.all()
+                ],
+            }
+            data.append(order_data)
+
+        return Response(data)
+    
+# Hero Section View
+class HeroSectionViewSet(viewsets.ModelViewSet):
+    queryset = HeroSection.objects.all()
+    serializer_class = HeroSectionSerializer
+    parser_classes = [MultiPartParser, FormParser]  
+
+    def get_permissions(self):
+        """
+        - Anyone can view (GET)
+        - Only superusers (admins) can create, update, delete
+        """
+        if self.action in ["list", "retrieve"]:
+            return [permissions.AllowAny()]
+        return [IsSuperUser()]

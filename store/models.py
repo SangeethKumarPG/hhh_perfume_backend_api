@@ -30,7 +30,7 @@ class CustomUser(AbstractUser):
 class Category(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True, blank=True)
-
+    image = models.ImageField(upload_to="categories/", null=True, blank=True)
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
@@ -242,6 +242,17 @@ class OTPVerification(models.Model):
     is_used = models.BooleanField(default=False)
     def is_expired(self):
         return timezone.now()>self.created_at+datetime.timedelta(minutes=10)
+    
+# Hero Section
+class HeroSection(models.Model):
+    title=models.CharField(max_length=200)
+    subtitle=models.CharField(max_length=300,blank=True,null=True)
+    image=models.ImageField(upload_to='hero_images/')
+    description=models.TextField(blank=True,null=True)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.title
 
 
 
