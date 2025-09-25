@@ -245,6 +245,7 @@ class OTPVerification(models.Model):
     
 # Hero Section
 class HeroSection(models.Model):
+    smallText = models.CharField(max_length=200,blank=True,null=True)
     title=models.CharField(max_length=200)
     subtitle=models.CharField(max_length=300,blank=True,null=True)
     image=models.ImageField(upload_to='hero_images/')
