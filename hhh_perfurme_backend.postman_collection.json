@@ -564,6 +564,66 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "delete-hero-section",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4NzU5ODUzLCJpYXQiOjE3NTg3NTk1NTMsImp0aSI6IjdhZmFkZjI2OTNkNjQ2ZWViMTZjNGI2MDg2YWIyODFhIiwidXNlcl9pZCI6MTB9.srULs0QT1UgkrGTV3Ci-rbhx-OZci_iRPrhJw2HDoJw",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "title",
+							"value": "Summer Sale",
+							"type": "text"
+						},
+						{
+							"key": "subtitle",
+							"value": "50% discount on all products",
+							"type": "text"
+						},
+						{
+							"key": "image",
+							"type": "file",
+							"src": "/Users/sangeethkumarpg/Desktop/hhh_frontend/HHH-frontend/images/hero-area/hhh_perfumes.1-removebg.png"
+						},
+						{
+							"key": "description",
+							"value": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/herosection/1/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"herosection",
+						"1",
+						""
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
